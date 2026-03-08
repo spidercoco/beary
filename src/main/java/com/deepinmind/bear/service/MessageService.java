@@ -9,6 +9,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.deepinmind.bear.core.AudioService;
@@ -28,26 +29,30 @@ public class MessageService implements WSService {
     @Autowired
     AudioService qwen3tts;
 
+    @Value("${beary.info.path:}")
+    private String infoRoot;
+
     private final List<Map<String, String>> messageCache = new CopyOnWriteArrayList<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final String STORAGE_FILE = "voicemails.json";
+    private String storageFilePath;
 
     @PostConstruct
     public void init() {
-        File file = new File(STORAGE_FILE);
+        storageFilePath = (infoRoot != null && !infoRoot.isEmpty() ? infoRoot : ".") + "/voicemails.json";
+        File file = new File(storageFilePath);
         log.info("Voice message storage absolute path: {}", file.getAbsolutePath());
         loadMessages();
     }
 
     private void loadMessages() {
         try {
-            File file = new File(STORAGE_FILE);
+            File file = new File(storageFilePath);
             if (file.exists()) {
                 List<Map<String, String>> loadedMessages = objectMapper.readValue(file, 
                     new TypeReference<List<Map<String, String>>>() {});
                 messageCache.clear();
                 messageCache.addAll(loadedMessages);
-                log.info("Loaded {} voicemails from {}", messageCache.size(), STORAGE_FILE);
+                log.info("Loaded {} voicemails from {}", messageCache.size(), storageFilePath);
             }
         } catch (IOException e) {
             log.error("Failed to load voicemails from file", e);
@@ -56,7 +61,7 @@ public class MessageService implements WSService {
 
     private void saveMessages() {
         try {
-            File file = new File(STORAGE_FILE);
+            File file = new File(storageFilePath);
             log.info("Saving {} messages to: {}", messageCache.size(), file.getAbsolutePath());
             objectMapper.writeValue(file, messageCache);
             log.info("Successfully saved voicemails to file.");
