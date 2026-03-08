@@ -15,8 +15,6 @@
     <description>Demo project for Spring Boot</description>
     <properties>
         <java.version>21</java.version>
-        <!-- Default value for sherpa native jar, can be overridden by profiles -->
-        <sherpa.native.jar>sherpa-onnx-native-lib-osx-aarch64-v1.12.28.jar</sherpa.native.jar>
     </properties>
     <dependencies>
         <dependency>
@@ -38,19 +36,20 @@
             <artifactId>onnxruntime</artifactId>
             <version>1.17.1</version>
         </dependency>
+        
+        <!-- Standard Sherpa-ONNX Core -->
         <dependency>
             <groupId>com.k2fsa.sherpa.onnx</groupId>
             <artifactId>sherpa-onnx</artifactId>
             <version>1.12.28</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/libs/sherpa-onnx-v1.12.28.jar</systemPath>
         </dependency>
+
+        <!-- Platform Specific Native Libraries via Profiles -->
+        <!-- These will be automatically downloaded from Maven Central -->
         <dependency>
             <groupId>com.k2fsa.sherpa.onnx</groupId>
-            <artifactId>sherpa-onnx-native</artifactId>
+            <artifactId>${sherpa.native.artifactId}</artifactId>
             <version>1.12.28</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/libs/${sherpa.native.jar}</systemPath>
         </dependency>
 
         <dependency>
@@ -73,7 +72,6 @@
             <artifactId>activation</artifactId>
             <version>1.1.1</version>
         </dependency>
-        <!-- no more than 2.3.3-->
         <dependency>
             <groupId>org.glassfish.jaxb</groupId>
             <artifactId>jaxb-runtime</artifactId>
@@ -121,21 +119,18 @@
         <version>5.0.0</version>
       </dependency>
       
-      <!-- WebSocket client dependency -->
       <dependency>
         <groupId>org.java-websocket</groupId>
         <artifactId>Java-WebSocket</artifactId>
         <version>1.5.3</version>
       </dependency>
       
-      <!-- JSON processing dependency -->
       <dependency>
         <groupId>org.json</groupId>
         <artifactId>json</artifactId>
         <version>20231013</version>
       </dependency>
       
-      <!-- OpenCV for camera capture -->
       <dependency>
         <groupId>org.openpnp</groupId>
         <artifactId>opencv</artifactId>
@@ -155,7 +150,6 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <layout>ZIP</layout>
-                    <includeSystemScope>true</includeSystemScope>
                     <requiresUnpack>
                         <dependency>
                             <groupId>ai.picovoice</groupId>
@@ -185,7 +179,7 @@
                 </os>
             </activation>
             <properties>
-                <sherpa.native.jar>sherpa-onnx-native-lib-osx-aarch64-v1.12.28.jar</sherpa.native.jar>
+                <sherpa.native.artifactId>sherpa-onnx-native-lib-osx-aarch64</sherpa.native.artifactId>
             </properties>
         </profile>
         <profile>
@@ -198,7 +192,7 @@
                 </os>
             </activation>
             <properties>
-                <sherpa.native.jar>sherpa-onnx-native-lib-linux-x64-v1.12.28.jar</sherpa.native.jar>
+                <sherpa.native.artifactId>sherpa-onnx-native-lib-linux-x64</sherpa.native.artifactId>
             </properties>
         </profile>
     </profiles>
