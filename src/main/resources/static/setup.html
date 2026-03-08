@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小熊AI - 初始化配置</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        h2 { color: #1a73e8; text-align: center; margin-bottom: 1.5rem; }
+        .form-group { margin-bottom: 1.2rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: bold; color: #555; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #1a73e8; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: bold; margin-top: 1rem; }
+        button:hover { background: #1557b0; }
+        .hint { font-size: 0.8rem; color: #888; margin-top: 0.3rem; }
+        #status { text-align: center; margin-top: 1rem; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>🐻 小熊AI 首次运行引导</h2>
+        <div class="form-group">
+            <label>命名空间 (Namespace)</label>
+            <input type="text" id="namespace" placeholder="例如: bearylove">
+            <p class="hint">用于区分不同家庭，需与 iOS App 一致</p>
+        </div>
+        <div class="form-group">
+            <label>DashScope API Key</label>
+            <input type="password" id="apiKey" placeholder="sk-...">
+            <p class="hint">阿里云通义千问 API 密钥</p>
+        </div>
+        <div class="form-group">
+            <label>设备角色</label>
+            <select id="role">
+                <option value="音箱">小熊音箱</option>
+                <option value="监控">监控探头</option>
+            </select>
+        </div>
+        <button onclick="save()">保存并启动系统</button>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        async function save() {
+            const data = {
+                namespace: document.getElementById('namespace').value,
+                apiKey: document.getElementById('apiKey').value,
+                role: document.getElementById('role').value
+            };
+
+            const status = document.getElementById('status');
+            status.innerText = "正在保存...";
+
+            try {
+                const resp = await fetch('/api/setup/save', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                const result = await resp.json();
+                if (result.status === 'success') {
+                    status.style.color = "green";
+                    status.innerText = result.message;
+                } else {
+                    status.style.color = "red";
+                    status.innerText = result.message;
+                }
+            } catch (e) {
+                status.style.color = "red";
+                status.innerText = "请求失败: " + e.message;
+            }
+        }
+    </script>
+</body>
+</html>
