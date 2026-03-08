@@ -15,6 +15,8 @@
     <description>Demo project for Spring Boot</description>
     <properties>
         <java.version>21</java.version>
+        <!-- Default value for sherpa native jar, can be overridden by profiles -->
+        <sherpa.native.jar>sherpa-onnx-native-lib-osx-aarch64-v1.12.28.jar</sherpa.native.jar>
     </properties>
     <dependencies>
         <dependency>
@@ -22,10 +24,10 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
         <dependency>
-    <groupId>io.agentscope</groupId>
-    <artifactId>agentscope</artifactId>
-    <version>1.0.9</version>
-</dependency>
+            <groupId>io.agentscope</groupId>
+            <artifactId>agentscope</artifactId>
+            <version>1.0.9</version>
+        </dependency>
         <dependency>
             <groupId>ai.picovoice</groupId>
             <artifactId>porcupine-java</artifactId>
@@ -50,36 +52,8 @@
             <scope>system</scope>
             <systemPath>${project.basedir}/libs/${sherpa.native.jar}</systemPath>
         </dependency>
-        ...
-        <profiles>
-        <profile>
-            <id>osx-arm64</id>
-            <activation>
-                <os>
-                    <family>mac</family>
-                    <arch>aarch64</arch>
-                </os>
-            </activation>
-            <properties>
-                <sherpa.native.jar>sherpa-onnx-native-lib-osx-aarch64-v1.12.28.jar</sherpa.native.jar>
-            </properties>
-        </profile>
-        <profile>
-            <id>linux-x64</id>
-            <activation>
-                <os>
-                    <family>unix</family>
-                    <name>linux</name>
-                    <arch>amd64</arch>
-                </os>
-            </activation>
-            <properties>
-                <sherpa.native.jar>sherpa-onnx-native-lib-linux-x64-v1.12.28.jar</sherpa.native.jar>
-            </properties>
-        </profile>
-        </profiles>
-        </project>
 
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
@@ -140,13 +114,6 @@
             <artifactId>bailian20231229</artifactId>
             <version>2.6.0</version>
         </dependency>
-        <!-- <dependency>
-            <groupId>io.calimero</groupId>
-            <artifactId>calimero-core</artifactId>
-            <version>3.0-SNAPSHOT</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/../calimero-core/build/libs/calimero-core-3.0-SNAPSHOT.jar</systemPath>
-        </dependency> -->
     
       <dependency>
         <groupId>org.osgi</groupId>
@@ -208,4 +175,31 @@
         </plugins>
     </build>
 
+    <profiles>
+        <profile>
+            <id>osx-arm64</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <sherpa.native.jar>sherpa-onnx-native-lib-osx-aarch64-v1.12.28.jar</sherpa.native.jar>
+            </properties>
+        </profile>
+        <profile>
+            <id>linux-x64</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                    <name>linux</name>
+                    <arch>amd64</arch>
+                </os>
+            </activation>
+            <properties>
+                <sherpa.native.jar>sherpa-onnx-native-lib-linux-x64-v1.12.28.jar</sherpa.native.jar>
+            </properties>
+        </profile>
+    </profiles>
 </project>
