@@ -45,13 +45,41 @@
         </dependency>
         <dependency>
             <groupId>com.k2fsa.sherpa.onnx</groupId>
-            <artifactId>sherpa-onnx-native-osx</artifactId>
+            <artifactId>sherpa-onnx-native</artifactId>
             <version>1.12.28</version>
             <scope>system</scope>
-            <systemPath>${project.basedir}/libs/sherpa-onnx-native-lib-osx-aarch64-v1.12.28.jar</systemPath>
+            <systemPath>${project.basedir}/libs/${sherpa.native.jar}</systemPath>
         </dependency>
+        ...
+        <profiles>
+        <profile>
+            <id>osx-arm64</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <sherpa.native.jar>sherpa-onnx-native-lib-osx-aarch64-v1.12.28.jar</sherpa.native.jar>
+            </properties>
+        </profile>
+        <profile>
+            <id>linux-x64</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                    <name>linux</name>
+                    <arch>amd64</arch>
+                </os>
+            </activation>
+            <properties>
+                <sherpa.native.jar>sherpa-onnx-native-lib-linux-x64-v1.12.28.jar</sherpa.native.jar>
+            </properties>
+        </profile>
+        </profiles>
+        </project>
 
-        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
