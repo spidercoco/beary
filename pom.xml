@@ -37,19 +37,23 @@
             <version>1.17.1</version>
         </dependency>
         
-        <!-- Standard Sherpa-ONNX Core -->
+        <!-- Sherpa-ONNX Core (Local JAR) -->
         <dependency>
             <groupId>com.k2fsa.sherpa.onnx</groupId>
             <artifactId>sherpa-onnx</artifactId>
             <version>1.12.28</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/libs/sherpa-onnx-v1.12.28.jar</systemPath>
         </dependency>
 
-        <!-- Platform Specific Native Libraries via Profiles -->
-        <!-- These will be automatically downloaded from Maven Central -->
+        <!-- Platform Specific Native Libraries (Local JARs) -->
+        <!-- Note: These are not on Maven Central, must be manually placed in /libs -->
         <dependency>
             <groupId>com.k2fsa.sherpa.onnx</groupId>
-            <artifactId>${sherpa.native.artifactId}</artifactId>
+            <artifactId>sherpa-onnx-native</artifactId>
             <version>1.12.28</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/libs/${sherpa.native.jar}</systemPath>
         </dependency>
 
         <dependency>
@@ -150,6 +154,7 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <layout>ZIP</layout>
+                    <includeSystemScope>true</includeSystemScope>
                     <requiresUnpack>
                         <dependency>
                             <groupId>ai.picovoice</groupId>
@@ -179,7 +184,7 @@
                 </os>
             </activation>
             <properties>
-                <sherpa.native.artifactId>sherpa-onnx-native-lib-osx-aarch64</sherpa.native.artifactId>
+                <sherpa.native.jar>sherpa-onnx-native-lib-osx-aarch64-v1.12.28.jar</sherpa.native.jar>
             </properties>
         </profile>
         <profile>
@@ -192,7 +197,7 @@
                 </os>
             </activation>
             <properties>
-                <sherpa.native.artifactId>sherpa-onnx-native-lib-linux-x64</sherpa.native.artifactId>
+                <sherpa.native.jar>sherpa-onnx-native-lib-linux-x64-v1.12.28.jar</sherpa.native.jar>
             </properties>
         </profile>
     </profiles>
