@@ -2,8 +2,8 @@ package com.deepinmind.bear.wword;
 
 import ai.picovoice.porcupine.Porcupine;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -15,6 +15,9 @@ import java.nio.file.StandardCopyOption;
 public class PorcupineEngine implements WakeWordEngine {
     private final String accessKey;
     private Porcupine porcupine;
+
+    @Value("${beary.info.path:}")
+    private String infoRoot;
 
     public PorcupineEngine(String accessKey) {
         this.accessKey = accessKey;
@@ -51,7 +54,8 @@ public class PorcupineEngine implements WakeWordEngine {
     }
 
     private String extractResource(String resourceName) throws IOException {
-        Path dir = Paths.get("pv_resources");
+        String dirPath = (infoRoot != null && !infoRoot.isEmpty() ? infoRoot : ".") + "/pv_resources";
+        Path dir = Paths.get(dirPath);
         if (!Files.exists(dir)) Files.createDirectories(dir);
         Path targetFile = dir.resolve(resourceName);
         try (InputStream is = new ClassPathResource(resourceName).getInputStream()) {

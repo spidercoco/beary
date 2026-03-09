@@ -111,6 +111,34 @@ public class OSSService {
     }
 
     /**
+     * Upload a byte array to Aliyun OSS
+     * 
+     * @param objectKey  The object key (file path in OSS)
+     * @param bytes      The file data as byte array
+     * @return The OSS URL of the uploaded file
+     * @throws IOException If upload fails
+     */
+    public String uploadFile(String objectKey, byte[] bytes) throws IOException {
+        try (InputStream inputStream = new ByteArrayInputStream(bytes)) {
+            ObjectMetadata metadata = new ObjectMetadata();
+            // Try to guess content type from extension if possible, or use default
+            metadata.setContentType("application/octet-stream");
+            metadata.setContentLength(bytes.length);
+
+            PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, objectKey, inputStream, metadata);
+            ossClient.putObject(putObjectRequest);
+
+            // Generate the OSS URL
+            String url = "https://" + bucketName + "." + endpoint + "/" + objectKey;
+            return url;
+        } catch (OSSException oe) {
+            throw new IOException("OSS Exception: " + oe.getErrorMessage(), oe);
+        } catch (ClientException ce) {
+            throw new IOException("Client Exception: " + ce.getMessage(), ce);
+        }
+    }
+
+    /**
      * Upload a string content to Aliyun OSS
      * 
      * @param objectKey  The object key (file path in OSS)

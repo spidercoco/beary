@@ -1,0 +1,8 @@
+logs
+target
+article.md
+.idea
+.vscode
+.DS_Store
+**/.DS_Store
+beary_info/conf/application.properties
