@@ -142,8 +142,18 @@ public class SpeakerService {
     }
 
     private boolean processAndRegister(String role, byte[] wavData) throws Exception {
+        log.info("Processing audio for role: {}, size: {} bytes", role, wavData.length);
         float[] samples = convertWavToFloats(wavData);
-        if (samples == null) throw new Exception("音频解析失败");
+        if (samples == null) {
+            log.error("Failed to convert WAV to floats for role: {}", role);
+            throw new Exception("音频解析失败");
+        }
+        log.info("Samples converted: {} floats", samples.length);
+
+        if (extractor == null) {
+            log.error("Speaker extractor is NULL!");
+            return false;
+        }
 
         OnlineStream stream = extractor.createStream();
         stream.acceptWaveform(samples, 16000);
@@ -151,11 +161,17 @@ public class SpeakerService {
         float[] newEmbedding = extractor.compute(stream);
         stream.release();
 
+        if (newEmbedding == null) {
+            log.error("Failed to compute embedding for role: {}", role);
+            return false;
+        }
+        log.info("Embedding computed, length: {}", newEmbedding.length);
+
         float[] finalEmbedding;
         File binFile = new File(getVoicePrintDir() + role + ".bin");
         
         if (binFile.exists()) {
-            log.info("Updating voiceprint for '{}' via blending.", role);
+            log.info("Updating existing voiceprint for '{}'", role);
             try {
                 float[] oldEmbedding = readEmbeddingFromDisk(binFile);
                 finalEmbedding = new float[newEmbedding.length];
@@ -164,17 +180,22 @@ public class SpeakerService {
                 }
                 normalizeInPlace(finalEmbedding);
             } catch (Exception e) {
+                log.warn("Blending failed, using new embedding: {}", e.getMessage());
                 finalEmbedding = newEmbedding;
             }
         } else {
             finalEmbedding = newEmbedding;
         }
 
-        if (manager.add(role, finalEmbedding)) {
+        boolean added = manager.add(role, finalEmbedding);
+        if (added) {
             saveEmbeddingToDisk(role, finalEmbedding);
+            log.info("Voiceprint for '{}' saved successfully.", role);
             return true;
+        } else {
+            log.error("Manager failed to add voiceprint for role: {}", role);
+            return false;
         }
-        return false;
     }
 
     private void normalizeInPlace(float[] v) {
