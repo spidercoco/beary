@@ -48,10 +48,15 @@ public class SpeakerWSService implements WSService {
             }
 
             log.info("Enrolling voiceprint for role: {}", role);
-            String result = speakerService.registerFromBase64(role, base64Audio);
+            boolean success = speakerService.registerFromBase64(role, base64Audio);
             
-            resultMap.put("status", "success");
-            resultMap.put("message", result);
+            if (success) {
+                resultMap.put("status", "success");
+                resultMap.put("message", "声纹注册成功");
+            } else {
+                resultMap.put("status", "error");
+                resultMap.put("message", "声纹注册失败");
+            }
             
         } catch (Exception e) {
             log.error("Voice enrollment failed: {}", e.getMessage());
