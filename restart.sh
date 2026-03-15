@@ -34,8 +34,13 @@ else
     fi
 fi
 
-echo "--- Rebuilding $APP_NAME (Optional, uncomment to enable) ---"
-# mvn clean package -DskipTests
+echo "--- Rebuilding $APP_NAME ---"
+mvn clean package -DskipTests
+
+if [ $? -ne 0 ]; then
+    echo "Build failed! Aborting restart."
+    exit 1
+fi
 
 echo "--- Starting $APP_NAME in background ---"
 nohup java -jar target/$JAR_NAME > "$LOG_FILE" 2>&1 &
