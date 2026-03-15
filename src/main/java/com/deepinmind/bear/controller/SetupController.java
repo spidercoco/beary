@@ -9,9 +9,10 @@ import java.util.Map;
 
 @Slf4j
 @RestController
+@RequestMapping("/aibeary/${namespace}/setup")
 public class SetupController {
 
-    @PostMapping("/api/setup/save")
+    @PostMapping("/save")
     public Map<String, Object> saveConfig(@RequestBody Map<String, String> data) {
         Map<String, Object> response = new HashMap<>();
         try {

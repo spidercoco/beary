@@ -15,7 +15,7 @@ import java.util.Map;
  * Controller for child monitoring endpoints.
  */
 @RestController
-@RequestMapping("/api/monitor")
+@RequestMapping("/aibeary/${namespace}/monitor")
 public class ChildMonitorController {
 
     @Autowired

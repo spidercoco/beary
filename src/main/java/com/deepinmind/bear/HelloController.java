@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@RequestMapping("/aibeary/${namespace}")
 public class HelloController {
 
     @GetMapping("/hello")

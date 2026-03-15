@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/speaker")
+@RequestMapping("/aibeary/${namespace}/speaker")
 public class SpeakerController {
 
     @Autowired

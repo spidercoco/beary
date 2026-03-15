@@ -1,29 +1,26 @@
-package com.deepinmind.bear.service;
+package com.deepinmind.bear.controller;
 
-import com.deepinmind.bear.core.WSService;
 import com.deepinmind.bear.oss.OSSService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
-/**
- * WebSocket 指令处理器：接收文件上传
- * 指令名称: file_upload
- */
 @Slf4j
-@Service("file_upload")
-public class FileUploadWSService implements WSService {
+@RestController
+@RequestMapping("/aibeary/${namespace}/file")
+public class FileUploadController {
 
     @Autowired
     private OSSService ossService;
@@ -36,26 +33,21 @@ public class FileUploadWSService implements WSService {
 
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd");
 
-    @Override
-    public Map<String, String> handleMessage(Map<String, String> message) {
-        String base64File = message.get("file");
-        String fileName = message.get("fileName");
-        log.info("Received file_upload command via WebSocket: {}", fileName);
+    @PostMapping("/upload")
+    public ResponseEntity<Map<String, Object>> upload(@RequestParam("file") MultipartFile file) {
+        String fileName = file.getOriginalFilename();
+        log.info("Received file upload request: {}", fileName);
         
-        Map<String, String> resultMap = new HashMap<>();
+        Map<String, Object> resultMap = new HashMap<>();
 
         try {
-            if (base64File == null || base64File.isEmpty()) {
+            if (file.isEmpty()) {
                 resultMap.put("status", "error");
-                resultMap.put("message", "File data is empty");
-                return resultMap;
+                resultMap.put("message", "File is empty");
+                return ResponseEntity.badRequest().body(resultMap);
             }
 
-            byte[] fileBytes = Base64.getDecoder().decode(base64File);
-            if (fileName == null || fileName.isEmpty()) {
-                fileName = UUID.randomUUID().toString();
-            }
-            
+            byte[] fileBytes = file.getBytes();
             String datePath = LocalDate.now().format(dateFormatter);
 
             // 1. 保存到本地缓存
@@ -75,16 +67,16 @@ public class FileUploadWSService implements WSService {
             log.info("File uploaded to OSS: {}", url);
             
             resultMap.put("status", "success");
-            resultMap.put("message", "文件已成功上传并备份");
+            resultMap.put("message", "文件已成功上传");
             resultMap.put("url", url);
+            return ResponseEntity.ok(resultMap);
             
-        } catch (Exception e) {
+        } catch (IOException e) {
             log.error("File upload failed", e);
             resultMap.put("status", "error");
             resultMap.put("message", "Failed to upload file: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(resultMap);
         }
-
-        return resultMap;
     }
 
     private String getInfoRoot() {

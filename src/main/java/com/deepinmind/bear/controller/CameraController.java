@@ -11,14 +11,14 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/camera")
+@RequestMapping("/aibeary/${namespace}/camera")
 public class CameraController {
 
     @Autowired
     private CameraService cameraService;
 
     /**
-     * 拍照并上传分析（替代原有的 WSService handleMessage）
+     * 拍照并上传分析
      */
     @GetMapping("/capture")
     public ResponseEntity<Map<String, String>> capture() {
@@ -31,7 +31,7 @@ public class CameraController {
     }
 
     /**
-     * 获取实时单帧画面（iOS 和 H5 实时流使用）
+     * 获取实时单帧画面
      */
     @GetMapping(value = "/stream", produces = MediaType.IMAGE_JPEG_VALUE)
     public ResponseEntity<byte[]> stream() {
