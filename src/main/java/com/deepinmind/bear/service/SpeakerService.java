@@ -85,6 +85,30 @@ public class SpeakerService {
         if (!Files.exists(path)) Files.createDirectories(path);
     }
 
+    public java.util.concurrent.CompletableFuture<String> identify(float[] samples) {
+        return java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+            if (extractor == null || manager == null) return "引擎未就绪";
+            try {
+                OnlineStream stream = extractor.createStream();
+                stream.acceptWaveform(samples, 16000);
+                stream.inputFinished();
+                float[] embedding = extractor.compute(stream);
+                stream.release();
+                String name = manager.search(embedding, 0.5f);
+                return (name != null && !name.isEmpty()) ? name : "未知";
+            } catch (Exception e) {
+                log.error("Speaker identification error: {}", e.getMessage());
+                return "识别异常";
+            }
+        });
+    }
+
+    public String registerFromBase64(String role, String base64Audio) throws Exception {
+        byte[] wavData = Base64.getDecoder().decode(base64Audio);
+        Files.write(Paths.get(getVoicePrintDir() + role + ".wav"), wavData);
+        return processAndRegister(role, wavData);
+    }
+
     public String register(String role, MultipartFile audioFile) throws Exception {
         log.info("Registering speaker: {}", role);
         byte[] originalData = audioFile.getBytes();
