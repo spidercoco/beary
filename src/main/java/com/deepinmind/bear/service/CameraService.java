@@ -18,7 +18,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.deepinmind.bear.agent.CameraAgent;
-import com.deepinmind.bear.core.WSService;
 import com.deepinmind.bear.oss.OSSService;
 import com.deepinmind.bear.session.Session;
 
@@ -32,7 +31,7 @@ import reactor.core.publisher.Mono;
 
 @Slf4j
 @Service("camera")
-public class CameraService implements WSService {
+public class CameraService {
 
     @Autowired
     private OSSService ossService;
@@ -105,24 +104,13 @@ public class CameraService implements WSService {
             Mat frame = new Mat();
             if (!sharedCamera.read(frame)) return null;
             MatOfByte buffer = new MatOfByte();
-            // 降低到 35，减小体积，提升帧率
+            // 降低质量以提升传输性能
             MatOfInt params = new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 35);
             Imgcodecs.imencode(".jpg", frame, buffer, params);
             byte[] bytes = buffer.toArray();
             frame.release(); buffer.release(); params.release();
             return bytes;
         } catch (Exception e) { return null; }
-    }
-
-    @Override
-    public Map<String, String> handleMessage(Map<String, String> message) {
-        log.info("Received camera control: {}", message);
-        String content = captureAndUpload();
-        if (content != null) {
-            return Map.of("status", "success", "content", content);
-        } else {
-            return Map.of("status", "error", "message", "Capture failed");
-        }
     }
 
     private final RestTemplate restTemplate = new RestTemplate();
@@ -161,6 +149,7 @@ public class CameraService implements WSService {
             byte[] imageBytes = buffer.toArray();
             String base64Image = Base64.getEncoder().encodeToString(imageBytes);
             frame.release(); buffer.release();
+            
             String objectName = namespace + "/camera/camera.jpg";
             ossService.uploadFile(objectName, new MockMultipartFile(objectName, objectName, "image/jpeg", imageBytes));
             Mono<Msg> msg = cameraAgent.call(new Session(), "看看图片中的人在做什么？", base64Image);
