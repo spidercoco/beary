@@ -1,6 +1,7 @@
 package com.deepinmind.bear.tools;
 
 import com.deepinmind.bear.utils.DeviceIdRegistry;
+import com.deepinmind.bear.utils.DeviceType;
 
 import io.agentscope.core.tool.Tool;
 import io.agentscope.core.tool.ToolParam;
@@ -11,8 +12,7 @@ import io.calimero.link.KNXNetworkLink;
 import io.calimero.link.KNXNetworkLinkIP;
 import io.calimero.link.medium.KNXMediumSettings;
 import io.calimero.link.medium.KnxIPSettings;
-
-
+import io.calimero.process.ProcessCommunication;
 import io.calimero.process.ProcessCommunicator;
 import io.calimero.process.ProcessCommunicatorImpl;
 import jakarta.annotation.PostConstruct;
@@ -90,8 +90,8 @@ public class KnxDeviceControl {
     }
 
 
-    @Tool(name = "knx_control", description = "控制智能家电设备")
-    public String control(@ToolParam(name = "deviceName", description = "设备列表，必须要在设备列表中") List<String> deviceNames,
+    @Tool(name = "knx_control_light", description = "控制灯")
+    public String controlLight(@ToolParam(name = "deviceName", description = "设备列表，必须要在设备列表中") List<String> deviceNames,
         @ToolParam(name = "switchOn", description = "开关是否打开，true/false ") boolean switchOn) {
         log.info("控制设备请求: {}, 值: {}", deviceNames, switchOn);
 
@@ -109,7 +109,31 @@ public class KnxDeviceControl {
         }
 
         // 提交给单线程线程池处理，避免多个连接同时冲击网关
-        executorService.submit(() -> processBatchControl(ids, switchOn));
+        executorService.submit(() -> processBatchControl(ids, switchOn, DeviceType.LIGHT));
+        
+        return "正在执行控制指令...";
+    }
+
+    @Tool(name = "knx_control_curtain", description = "控制窗帘")
+    public String controlCurtain(@ToolParam(name = "deviceName", description = "设备列表，必须要在设备列表中") List<String> deviceNames,
+        @ToolParam(name = "switchOn", description = "开关是否打开，true/false ") boolean switchOn) {
+        log.info("控制设备请求: {}, 值: {}", deviceNames, switchOn);
+
+        if (localSocketAddress == null) {
+            return "错误: 本地网络地址未初始化";
+        }
+
+        List<String> ids = deviceNames.stream()
+                .map(name -> deviceIdRegistry.getDeviceId(name))
+                .filter(id -> id != null)
+                .toList();
+
+        if (ids.isEmpty()) {
+            return "未找到对应的设备ID";
+        }
+
+        // 提交给单线程线程池处理，避免多个连接同时冲击网关
+        executorService.submit(() -> processBatchControl(ids, switchOn, DeviceType.LIGHT));
         
         return "正在执行控制指令...";
     }
@@ -117,7 +141,7 @@ public class KnxDeviceControl {
     /**
      * 批量处理设备控制，复用同一个隧道连接
      */
-    private void processBatchControl(List<String> deviceIds, boolean switchOn) {
+    private void processBatchControl(List<String> deviceIds, boolean switchOn, DeviceType type) {
         KNXNetworkLink link = null;
         ProcessCommunicator pc = null;
 
@@ -141,7 +165,12 @@ public class KnxDeviceControl {
                 try {
                     GroupAddress ga = new GroupAddress(deviceId);
                     log.info("执行设备控制: {} -> {}", deviceId, switchOn);
+                    if(type == DeviceType.CURTAIN) {
+                        pc.write(ga, switchOn ? ProcessCommunication.BOOL_UP : ProcessCommunication.BOOL_DOWN, 0);
+
+                    } else {
                     pc.write(ga, switchOn);
+                    }
                     log.info("设备 {} 操作成功", deviceId);
                     // 在连续指令间增加极短的停顿，防止总线拥塞
                     Thread.sleep(50); 
