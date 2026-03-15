@@ -60,6 +60,7 @@ echo "--- Updating FRPC Config (Namespace: $NAMESPACE) ---"
 cat > "$FRPC_CONFIG" <<EOF
 serverAddr = "it.deepinmind.com"
 serverPort = 7000
+auth.token = "deepinmind_secret_666"
 
 [[proxies]]
 name = "${NAMESPACE}_http"
