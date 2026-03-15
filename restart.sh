@@ -50,4 +50,5 @@ NEW_PID=$!
 echo $NEW_PID > "$PID_FILE"
 
 echo "$APP_NAME started with PID $NEW_PID."
-echo "You can check logs with: tail -f $LOG_FILE"
+echo "--- Tailing logs (Ctrl+C to stop tailing, but app will keep running) ---"
+tail -f "$LOG_FILE"

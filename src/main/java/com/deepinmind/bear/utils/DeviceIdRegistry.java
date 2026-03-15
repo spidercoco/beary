@@ -2,9 +2,10 @@ package com.deepinmind.bear.utils;
 
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -16,16 +17,15 @@ import java.util.Properties;
 
 /**
  * 设备名称 -> 设备ID 映射加载器
- * 启动时从 classpath 下的配置文件加载到内存
+ * 启动时从 beary_info/conf/ 目录下加载配置文件
  */
 @Component
 public class DeviceIdRegistry {
 
     /**
-     * 配置文件路径（classpath 下），可在 application.yml/properties 中覆盖
-     * 例如：smarthome.device-config=devices.properties
+     * 配置文件路径，可在 application.yml/properties 中覆盖
      */
-    @Value("${smarthome.device-config:devices.properties}")
+    @Value("${smarthome.device-config:beary_info/conf/devices.properties}")
     private String configLocation;
 
     private Map<String, String> deviceIdMap = Collections.emptyMap();
@@ -34,12 +34,17 @@ public class DeviceIdRegistry {
     public void init() throws IOException {
         Properties properties = new Properties();
 
-        ClassPathResource resource = new ClassPathResource(configLocation);
-        if (!resource.exists()) {
-            throw new IllegalStateException("设备配置文件不存在: " + configLocation);
+        File configFile = new File(configLocation);
+        if (!configFile.exists()) {
+            // 尝试相对于程序运行目录找
+            configFile = new File(System.getProperty("user.dir"), configLocation);
         }
 
-        try (Reader reader = new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8)) {
+        if (!configFile.exists()) {
+            throw new IllegalStateException("设备配置文件不存在: " + configFile.getAbsolutePath());
+        }
+
+        try (Reader reader = new InputStreamReader(new FileInputStream(configFile), StandardCharsets.UTF_8)) {
             properties.load(reader);
         }
 
