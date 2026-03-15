@@ -25,6 +25,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.time.Duration;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -43,7 +44,7 @@ public class KnxDeviceControl {
 
     @PostConstruct
     public void init() {
-        executorService = Executors.newSingleThreadExecutor(); // 改为单线程，确保对网关的访问是串行的
+        executorService = Executors.newSingleThreadExecutor(); 
         remoteSocketAddress = new InetSocketAddress("192.168.1.200", 3671);
         localSocketAddress = initLocalAddress();
     }
@@ -93,55 +94,60 @@ public class KnxDeviceControl {
     @Tool(name = "knx_control_light", description = "控制灯")
     public String controlLight(@ToolParam(name = "deviceName", description = "设备列表，必须要在设备列表中") List<String> deviceNames,
         @ToolParam(name = "switchOn", description = "开关是否打开，true/false ") boolean switchOn) {
-        log.info("控制设备请求: {}, 值: {}", deviceNames, switchOn);
+        log.info("控制灯请求: {}, 值: {}", deviceNames, switchOn);
 
         if (localSocketAddress == null) {
             return "错误: 本地网络地址未初始化";
         }
 
-        List<String> ids = deviceNames.stream()
-                .map(name -> deviceIdRegistry.getDeviceId(name))
-                .filter(id -> id != null)
-                .toList();
+        List<String> ids = getDeviceIds(deviceNames);
+        if (ids.isEmpty()) return "未找到对应的设备ID";
 
-        if (ids.isEmpty()) {
-            return "未找到对应的设备ID";
-        }
-
-        // 提交给单线程线程池处理，避免多个连接同时冲击网关
-        executorService.submit(() -> processBatchControl(ids, switchOn, DeviceType.LIGHT));
-        
-        return "正在执行控制指令...";
+        executorService.submit(() -> processBatchControl(ids, switchOn ? 1 : 0, DeviceType.LIGHT));
+        return "正在执行灯控制指令...";
     }
 
-    @Tool(name = "knx_control_curtain", description = "控制窗帘")
-    public String controlCurtain(@ToolParam(name = "deviceName", description = "设备列表，必须要在设备列表中") List<String> deviceNames,
-        @ToolParam(name = "switchOn", description = "开关是否打开，true/false ") boolean switchOn) {
-        log.info("控制设备请求: {}, 值: {}", deviceNames, switchOn);
+    @Tool(name = "knx_control_curtain", description = "控制窗帘开关")
+    public String controlCurtain(@ToolParam(name = "deviceName", description = "设备列表") List<String> deviceNames,
+        @ToolParam(name = "open", description = "是否打开，true为打开(1)，false为关闭(2)") boolean open) {
+        log.info("控制窗帘请求: {}, 打开: {}", deviceNames, open);
 
-        if (localSocketAddress == null) {
-            return "错误: 本地网络地址未初始化";
-        }
+        if (localSocketAddress == null) return "错误: 本地网络地址未初始化";
 
-        List<String> ids = deviceNames.stream()
+        List<String> ids = getDeviceIds(deviceNames);
+        if (ids.isEmpty()) return "未找到对应的设备ID";
+
+        // 1=Open, 2=Close
+        executorService.submit(() -> processBatchControl(ids, open ? 1 : 2, DeviceType.CURTAIN));
+        return "正在执行窗帘控制指令...";
+    }
+
+    @Tool(name = "knx_stop_curtain", description = "停止窗帘运动")
+    public String stopCurtain(@ToolParam(name = "deviceName", description = "设备列表") List<String> deviceNames) {
+        log.info("停止窗帘请求: {}", deviceNames);
+
+        if (localSocketAddress == null) return "错误: 本地网络地址未初始化";
+
+        List<String> ids = getDeviceIds(deviceNames);
+        if (ids.isEmpty()) return "未找到对应的设备ID";
+
+        // 0=Stop
+        executorService.submit(() -> processBatchControl(ids, 0, DeviceType.CURTAIN));
+        return "正在执行停止窗帘指令...";
+    }
+
+    private List<String> getDeviceIds(List<String> deviceNames) {
+        return deviceNames.stream()
                 .map(name -> deviceIdRegistry.getDeviceId(name))
                 .filter(id -> id != null)
                 .toList();
-
-        if (ids.isEmpty()) {
-            return "未找到对应的设备ID";
-        }
-
-        // 提交给单线程线程池处理，避免多个连接同时冲击网关
-        executorService.submit(() -> processBatchControl(ids, switchOn, DeviceType.LIGHT));
-        
-        return "正在执行控制指令...";
     }
 
     /**
-     * 批量处理设备控制，复用同一个隧道连接
+     * 批量处理设备控制
+     * value: 对于灯是 0/1, 对于窗帘是 0(停)/1(开)/2(关)
      */
-    private void processBatchControl(List<String> deviceIds, boolean switchOn, DeviceType type) {
+    private void processBatchControl(List<String> deviceIds, int value, DeviceType type) {
         KNXNetworkLink link = null;
         ProcessCommunicator pc = null;
 
@@ -149,12 +155,9 @@ public class KnxDeviceControl {
             IndividualAddress deviceAddress = KNXMediumSettings.BackboneRouter;
             KnxIPSettings settings = new KnxIPSettings(deviceAddress);
             
-            log.info("建立 KNX 隧道连接...");
             link = KNXNetworkLinkIP.newTunnelingLink(localSocketAddress, remoteSocketAddress, false, settings);
             pc = new ProcessCommunicatorImpl(link);
-            
-            // 设置更长的响应超时时间（2秒），增加容错
-            // pc.setResponseTimeout(2);
+            pc.responseTimeout(Duration.ofSeconds(5));
 
             if (!link.isOpen()) {
                 log.error("KNX链接建立失败");
@@ -164,27 +167,60 @@ public class KnxDeviceControl {
             for (String deviceId : deviceIds) {
                 try {
                     GroupAddress ga = new GroupAddress(deviceId);
-                    log.info("执行设备控制: {} -> {}", deviceId, switchOn);
                     if(type == DeviceType.CURTAIN) {
-                        pc.write(ga, switchOn ? ProcessCommunication.BOOL_UP : ProcessCommunication.BOOL_DOWN, 0);
-
+                        log.info("发送窗帘 Unscaled 命令: {} -> {}", deviceId, value);
+                        pc.write(ga, value, ProcessCommunication.UNSCALED);
                     } else {
-                    pc.write(ga, switchOn);
+                        log.info("发送灯/开关命令: {} -> {}", deviceId, value == 1);
+                        pc.write(ga, value == 1);
                     }
-                    log.info("设备 {} 操作成功", deviceId);
-                    // 在连续指令间增加极短的停顿，防止总线拥塞
+                    // 总线指令间隔保持极短以防丢包，但不再等待网关初始状态
                     Thread.sleep(50); 
                 } catch (Exception e) {
-                    log.error("设备 {} 操作超时或失败 (但物理操作可能已生效): {}", deviceId, e.getMessage());
+                    log.error("设备 {} 操作失败: {}", deviceId, e.getMessage());
                 }
             }
 
         } catch (Exception e) {
-            log.error("KNX 批处理连接异常: {}", e.getMessage());
+            log.error("KNX 连接异常: {}", e.getMessage());
         } finally {
             if (pc != null) pc.close();
             if (link != null) link.close();
-            log.info("KNX 隧道连接已关闭");
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        InetSocketAddress remote = new InetSocketAddress("192.168.1.200", 3671);
+        InetAddress localAddr = getLocalAddress(remote.getAddress());
+        InetSocketAddress local = new InetSocketAddress(localAddr, 0);
+
+        String curtainAddress = "2/0/67"; 
+        String lightAddress = "1/0/37"; 
+
+        KNXNetworkLink link = null;
+        ProcessCommunicator pc = null;
+        try {
+            IndividualAddress deviceAddress = KNXMediumSettings.BackboneRouter;
+            link = KNXNetworkLinkIP.newTunnelingLink(local, remote, false, new KnxIPSettings(deviceAddress));
+            pc = new ProcessCommunicatorImpl(link);
+            pc.responseTimeout(Duration.ofSeconds(5));
+
+            if (!link.isOpen()) return;
+
+            // 1. 测试窗帘: 1=Open
+            System.out.println("测试窗帘 Open (1): " + curtainAddress);
+            pc.write(new GroupAddress(curtainAddress), 1, ProcessCommunication.UNSCALED);
+            
+            Thread.sleep(500);
+
+            // 2. 测试灯: true=On
+            System.out.println("测试灯 On: " + lightAddress);
+            pc.write(new GroupAddress(lightAddress), true);
+
+        } finally {
+            if (pc != null) pc.close();
+            if (link != null) link.close();
+            System.out.println("Done.");
         }
     }
 }
