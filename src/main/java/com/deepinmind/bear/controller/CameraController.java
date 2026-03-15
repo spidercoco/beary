@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/camera")
+@RequestMapping("/camera")
 public class CameraController {
 
     @Autowired

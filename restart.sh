@@ -67,7 +67,8 @@ name = "${NAMESPACE}_http"
 type = "http"
 localIP = "127.0.0.1"
 localPort = 8080
-subdomain = "${NAMESPACE}"
+customDomains = ["it.deepinmind.com"]
+locations = ["/aibeary/${NAMESPACE}"]
 EOF
 
 # 5. --- Rebuild ---
