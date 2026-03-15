@@ -66,8 +66,7 @@ name = "${NAMESPACE}_http"
 type = "http"
 localIP = "127.0.0.1"
 localPort = 8080
-customDomains = ["it.deepinmind.com"]
-locations = ["/proxy/${NAMESPACE}"]
+subdomain = "${NAMESPACE}"
 EOF
 
 # 5. --- Rebuild ---
