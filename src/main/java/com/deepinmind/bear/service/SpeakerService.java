@@ -109,7 +109,7 @@ public class SpeakerService {
         return processAndRegister(role, wavData);
     }
 
-    public String register(String role, MultipartFile audioFile) throws Exception {
+    public boolean register(String role, MultipartFile audioFile) throws Exception {
         log.info("Registering speaker: {}", role);
         byte[] originalData = audioFile.getBytes();
         
@@ -147,7 +147,7 @@ public class SpeakerService {
         log.info("Conversion completed: {}", target.getAbsolutePath());
     }
 
-    private String processAndRegister(String role, byte[] wavData) throws Exception {
+    private boolean processAndRegister(String role, byte[] wavData) throws Exception {
         float[] samples = convertWavToFloats(wavData);
         if (samples == null) throw new Exception("音频解析失败");
 
@@ -178,9 +178,9 @@ public class SpeakerService {
 
         if (manager.add(role, finalEmbedding)) {
             saveEmbeddingToDisk(role, finalEmbedding);
-            return "注册成功: " + role;
+            return true;
         }
-        return "注册失败";
+        return false;
     }
 
     private void normalizeInPlace(float[] v) {

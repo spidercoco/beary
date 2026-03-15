@@ -33,9 +33,14 @@ public class SpeakerController {
                 return response;
             }
 
-            String result = speakerService.register(role, audioFile);
-            response.put("status", "success");
-            response.put("message", result);
+            boolean success = speakerService.register(role, audioFile);
+            if (success) {
+                response.put("status", "success");
+                response.put("message", "注册成功: " + role);
+            } else {
+                response.put("status", "error");
+                response.put("message", "注册失败");
+            }
             
         } catch (Exception e) {
             response.put("status", "error");
