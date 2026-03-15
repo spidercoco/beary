@@ -16,7 +16,7 @@ import java.util.Map;
  * Access this via: http://it.deepinmind.com/proxy/bearylove/api/test
  */
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/aibeary/${namespace}/proxy-test")
 public class ProxyTestController {
 
     @GetMapping("/test")

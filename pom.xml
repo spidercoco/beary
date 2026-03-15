@@ -145,6 +145,11 @@
         <artifactId>netty-all</artifactId>
         <version>4.1.100.Final</version>
       </dependency>
+        <dependency>
+            <groupId>ws.schild</groupId>
+            <artifactId>jave-all-deps</artifactId>
+            <version>3.3.1</version>
+        </dependency>
     </dependencies>
 
     <build>

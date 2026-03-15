@@ -9,6 +9,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import ws.schild.jave.Encoder;
+import ws.schild.jave.MultimediaObject;
+import ws.schild.jave.encode.AudioAttributes;
+import ws.schild.jave.encode.EncodingAttributes;
 
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
@@ -36,9 +40,8 @@ public class SpeakerService {
     private SpeakerEmbeddingExtractor extractor;
     private SpeakerEmbeddingManager manager;
     
-    // 动态计算路径，确保以 / 结尾
     private String getInfoRoot() {
-        if (infoRoot.isEmpty()) return "";
+        if (infoRoot == null || infoRoot.isEmpty()) return "";
         return infoRoot.endsWith("/") ? infoRoot : infoRoot + "/";
     }
 
@@ -71,9 +74,7 @@ public class SpeakerService {
             
             loadStoredEmbeddings();
             
-            log.info("Speaker Service initialized. Root: {}, Dimension: {}", 
-                     infoRoot.isEmpty() ? "current" : modelFile.getParent(), 
-                     extractor.getDim());
+            log.info("Speaker Service initialized. Dimension: {}", extractor.getDim());
         } catch (Exception e) {
             log.error("Failed to init Speaker Service: {}", e.getMessage());
         }
@@ -84,35 +85,42 @@ public class SpeakerService {
         if (!Files.exists(path)) Files.createDirectories(path);
     }
 
-    public java.util.concurrent.CompletableFuture<String> identify(float[] samples) {
-        return java.util.concurrent.CompletableFuture.supplyAsync(() -> {
-            if (extractor == null || manager == null) return "引擎未就绪";
-            try {
-                OnlineStream stream = extractor.createStream();
-                stream.acceptWaveform(samples, 16000);
-                stream.inputFinished();
-                float[] embedding = extractor.compute(stream);
-                stream.release();
-                String name = manager.search(embedding, 0.5f);
-                return (name != null && !name.isEmpty()) ? name : "未知";
-            } catch (Exception e) {
-                log.error("Speaker identification error: {}", e.getMessage());
-                return "识别异常";
-            }
-        });
-    }
-
-    public String registerFromBase64(String role, String base64Audio) throws Exception {
-        byte[] wavData = Base64.getDecoder().decode(base64Audio);
-        Files.write(Paths.get(getVoicePrintDir() + role + ".wav"), wavData);
-        return processAndRegister(role, wavData);
-    }
-
     public String register(String role, MultipartFile audioFile) throws Exception {
-        byte[] wavData = audioFile.getBytes();
-        Files.write(Paths.get(getVoicePrintDir() + role + ".wav"), wavData);
+        log.info("Registering speaker: {}", role);
+        byte[] originalData = audioFile.getBytes();
+        
+        // 1. 保存原始文件以备查
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        File rawFile = new File(getVoicePrintDir() + role + "_" + timestamp + ".raw");
+        Files.write(rawFile.toPath(), originalData);
+
+        // 2. 转换为标准 WAV (16k, Mono, PCM)
+        File wavFile = new File(getVoicePrintDir() + role + ".wav");
+        convertToStandardWav(rawFile, wavFile);
+
+        // 3. 备份到 OSS
         backupToOSS(role, audioFile);
+
+        // 4. 处理并注册
+        byte[] wavData = Files.readAllBytes(wavFile.toPath());
         return processAndRegister(role, wavData);
+    }
+
+    private void convertToStandardWav(File source, File target) throws Exception {
+        log.info("Converting {} to standard WAV...", source.getName());
+        AudioAttributes audio = new AudioAttributes();
+        audio.setCodec("pcm_s16le");
+        audio.setBitRate(256000);
+        audio.setChannels(1);
+        audio.setSamplingRate(16000);
+
+        EncodingAttributes attrs = new EncodingAttributes();
+        attrs.setOutputFormat("wav");
+        attrs.setAudioAttributes(audio);
+
+        Encoder encoder = new Encoder();
+        encoder.encode(new MultimediaObject(source), target, attrs);
+        log.info("Conversion completed: {}", target.getAbsolutePath());
     }
 
     private String processAndRegister(String role, byte[] wavData) throws Exception {
@@ -180,21 +188,6 @@ public class SpeakerService {
                     log.info("Loaded cached voiceprint: {}", role);
                 } catch (Exception e) {
                     log.error("Failed to load bin {}: {}", f.getName(), e.getMessage());
-                }
-            }
-        }
-
-        File[] wavFiles = dir.listFiles((d, name) -> name.endsWith(".wav"));
-        if (wavFiles != null) {
-            for (File f : wavFiles) {
-                String role = f.getName().replace(".wav", "");
-                if (!new File(getVoicePrintDir() + role + ".bin").exists()) {
-                    try {
-                        byte[] wavData = Files.readAllBytes(f.toPath());
-                        processAndRegister(role, wavData);
-                    } catch (Exception e) {
-                        log.error("Failed to process backup wav {}: {}", f.getName(), e.getMessage());
-                    }
                 }
             }
         }
