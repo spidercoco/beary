@@ -209,7 +209,7 @@ public class KnxDeviceControl {
 
             // 1. 测试窗帘: 1=Open
             System.out.println("测试窗帘 Open (1): " + curtainAddress);
-            pc.write(new GroupAddress(curtainAddress), 1, ProcessCommunication.UNSCALED);
+            pc.write(new GroupAddress(curtainAddress), 0, ProcessCommunication.UNSCALED);
             
             Thread.sleep(500);
 
