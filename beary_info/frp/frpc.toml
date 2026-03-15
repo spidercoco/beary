@@ -1,0 +1,9 @@
+serverAddr = "it.deepinmind.com"
+serverPort = 7000
+
+[[proxies]]
+name = "bearylove_http"
+type = "http"
+localIP = "127.0.0.1"
+localPort = 8080
+subdomain = "bearylove"
