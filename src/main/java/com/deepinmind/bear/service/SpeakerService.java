@@ -103,12 +103,6 @@ public class SpeakerService {
         });
     }
 
-    public String registerFromBase64(String role, String base64Audio) throws Exception {
-        byte[] wavData = Base64.getDecoder().decode(base64Audio);
-        Files.write(Paths.get(getVoicePrintDir() + role + ".wav"), wavData);
-        return processAndRegister(role, wavData);
-    }
-
     public boolean register(String role, MultipartFile audioFile) throws Exception {
         log.info("Registering speaker: {}", role);
         byte[] originalData = audioFile.getBytes();
