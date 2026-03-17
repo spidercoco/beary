@@ -65,6 +65,9 @@ public class BotAgent extends SubAgent {
                                 .skillBox(skillBox)
                                 .build();
 
+
+                Toolkit texToolkit = new Toolkit();
+                texToolkit.registerTool(homeworkService);
                 // 2. Text Agent
                 textAgent = ReActAgent.builder()
                                 .name("BotText")
@@ -74,8 +77,7 @@ public class BotAgent extends SubAgent {
                                                 .apiKey(dashscopeKey)
                                                 .modelName("qwen3-max")
                                                 .build())
-                                .toolkit(toolkit)
-                                .skillBox(skillBox)
+                                .toolkit(texToolkit)
                                 .build();
         }
 

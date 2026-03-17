@@ -27,7 +27,7 @@ import java.util.Map;
 public class BotController {
 
     @Autowired
-    private BearyAgent bearyAgent;
+    private com.deepinmind.bear.agent.BotAgent botAgent;
 
     @Autowired
     private MessageService messageService;
@@ -41,8 +41,23 @@ public class BotController {
     @Autowired
     private VoiceRecognitionService voiceRecognitionService;
 
+    @Autowired
+    private com.deepinmind.bear.service.HomeworkService homeworkService;
+
     @Value("${namespace}")
     private String namespace;
+
+    /**
+     * 健康检查接口
+     */
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, Object>> healthCheck() {
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "ok");
+        response.put("namespace", namespace);
+        response.put("timestamp", System.currentTimeMillis());
+        return ResponseEntity.ok(response);
+    }
 
     /**
      * 语音对话接口 - 识别并回复
@@ -69,9 +84,13 @@ public class BotController {
 
             // 3. 调用 Agent 处理
             Session session = new Session();
-            if (role != null) session.setUser(java.util.concurrent.CompletableFuture.completedFuture(role));
+            String finalInput = transcript;
+            if (role != null) {
+                session.setUser(java.util.concurrent.CompletableFuture.completedFuture(role));
+                finalInput = "我是" + role + "。" + transcript;
+            }
             
-            io.agentscope.core.message.Msg resultMsg = bearyAgent.call(session, transcript, null);
+            io.agentscope.core.message.Msg resultMsg = botAgent.call(session, finalInput, null).block();
             
             response.put("status", "success");
             response.put("transcript", transcript);
@@ -93,12 +112,13 @@ public class BotController {
     public Flux<String> botStream(@RequestParam String content, @RequestParam(required = false) String role) {
         log.info("Received streaming bot command: {}, role: {}", content, role);
         Session session = new Session();
-        if (role != null) session.setUser(java.util.concurrent.CompletableFuture.completedFuture(role));
+        String finalInput = content;
+        if (role != null) {
+            session.setUser(java.util.concurrent.CompletableFuture.completedFuture(role));
+            finalInput = "我是" + role + "。" + content;
+        }
 
-        SubAgent subAgent = router.route(session, content);
-        if (subAgent == null) return Flux.just("error: 路由失败");
-
-        return subAgent.streamCall(session, content)
+        return botAgent.streamCall(session, finalInput)
                 .map(event -> {
                     if (event.getMessage() != null) {
                         return event.getMessage().getTextContent();
@@ -121,9 +141,13 @@ public class BotController {
         Map<String, Object> response = new HashMap<>();
         try {
             Session session = new Session();
-            if (role != null) session.setUser(java.util.concurrent.CompletableFuture.completedFuture(role));
+            String finalInput = content;
+            if (role != null) {
+                session.setUser(java.util.concurrent.CompletableFuture.completedFuture(role));
+                finalInput = "我是" + role + "。" + content;
+            }
             
-            io.agentscope.core.message.Msg resultMsg = bearyAgent.call(session, content, base64Image);
+            io.agentscope.core.message.Msg resultMsg = botAgent.call(session, finalInput, base64Image).block();
             
             response.put("status", "success");
             response.put("content", resultMsg != null ? resultMsg.getTextContent() : "无响应");
