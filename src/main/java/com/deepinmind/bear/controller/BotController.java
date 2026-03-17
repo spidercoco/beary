@@ -1,13 +1,21 @@
 package com.deepinmind.bear.controller;
 
-import com.deepinmind.bear.agent.BotAgent;
+import com.deepinmind.bear.agent.BearyAgent;
+import com.deepinmind.bear.agent.Router;
+import com.deepinmind.bear.agent.SubAgent;
+import com.deepinmind.bear.oss.OSSService;
 import com.deepinmind.bear.service.MessageService;
+import com.deepinmind.bear.service.VoiceRecognitionService;
 import com.deepinmind.bear.session.Session;
 import io.agentscope.core.message.Msg;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.HashMap;
@@ -19,28 +27,106 @@ import java.util.Map;
 public class BotController {
 
     @Autowired
-    private BotAgent botAgent;
+    private BearyAgent bearyAgent;
 
     @Autowired
     private MessageService messageService;
 
+    @Autowired
+    private Router router;
+
+    @Autowired
+    private OSSService ossService;
+
+    @Autowired
+    private VoiceRecognitionService voiceRecognitionService;
+
+    @Value("${namespace}")
+    private String namespace;
+
     /**
-     * 机器人对话接口 (替代 bot_command WebSocket)
+     * 语音对话接口 - 识别并回复
+     */
+    @PostMapping("/voice")
+    public ResponseEntity<Map<String, Object>> botVoice(
+            @RequestParam("audio") MultipartFile audioFile,
+            @RequestParam(required = false) String role) {
+        log.info("Received bot voice command from role: {}", role);
+        
+        Map<String, Object> response = new HashMap<>();
+        try {
+            // 1. 上传到 OSS 供 ASR 访问
+            String objectName = namespace + "/tmp/asr_" + System.currentTimeMillis() + ".wav";
+            String fileUrl = ossService.uploadFile(objectName, audioFile);
+            
+            // 2. 语音识别
+            String transcript = voiceRecognitionService.recognize(fileUrl);
+            log.info("ASR transcript: {}", transcript);
+            
+            if (transcript == null || transcript.isEmpty()) {
+                throw new Exception("未能识别出文字");
+            }
+
+            // 3. 调用 Agent 处理
+            Session session = new Session();
+            if (role != null) session.setUser(java.util.concurrent.CompletableFuture.completedFuture(role));
+            
+            io.agentscope.core.message.Msg resultMsg = bearyAgent.call(session, transcript, null);
+            
+            response.put("status", "success");
+            response.put("transcript", transcript);
+            response.put("content", resultMsg != null ? resultMsg.getTextContent() : "无响应");
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("Bot voice command failed", e);
+            response.put("status", "error");
+            response.put("message", e.getMessage());
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+
+    /**
+     * 机器人对话接口 - 支持流式 (SSE)
+     */
+    @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<String> botStream(@RequestParam String content, @RequestParam(required = false) String role) {
+        log.info("Received streaming bot command: {}, role: {}", content, role);
+        Session session = new Session();
+        if (role != null) session.setUser(java.util.concurrent.CompletableFuture.completedFuture(role));
+
+        SubAgent subAgent = router.route(session, content);
+        if (subAgent == null) return Flux.just("error: 路由失败");
+
+        return subAgent.streamCall(session, content)
+                .map(event -> {
+                    if (event.getMessage() != null) {
+                        return event.getMessage().getTextContent();
+                    }
+                    return "";
+                })
+                .filter(text -> !text.isEmpty());
+    }
+
+    /**
+     * 机器人对话接口 - 同步返回
      */
     @PostMapping("/command")
     public ResponseEntity<Map<String, Object>> botCommand(@RequestBody Map<String, String> payload) {
         String content = payload.get("content");
         String base64Image = payload.get("image");
-        log.info("Received bot command request: {}", content);
+        String role = payload.get("role");
+        log.info("Received unified bot command: {}, role: {}", content, role);
 
         Map<String, Object> response = new HashMap<>();
         try {
-            String input = (content != null && !content.isEmpty()) ? content : "请分析这张图片";
-            Mono<Msg> resultMono = botAgent.call(new Session(), input, base64Image);
-            Msg resultMsg = resultMono.block();
+            Session session = new Session();
+            if (role != null) session.setUser(java.util.concurrent.CompletableFuture.completedFuture(role));
+            
+            io.agentscope.core.message.Msg resultMsg = bearyAgent.call(session, content, base64Image);
             
             response.put("status", "success");
-            response.put("content", resultMsg.getTextContent());
+            response.put("content", resultMsg != null ? resultMsg.getTextContent() : "无响应");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Bot command failed", e);

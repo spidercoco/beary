@@ -37,6 +37,38 @@ public class BearyAgent {
 
     private boolean done = true;
 
+    /**
+     * 同步调用并返回完整消息文本
+     */
+    public io.agentscope.core.message.Msg call(Session session, String input, String base64Image) {
+        SubAgent subAgent = router.route(session, input);
+        if (subAgent == null) return null;
+
+        String finalInput = input;
+        try {
+            String user = session.getUser().get(100, TimeUnit.MILLISECONDS);
+            if (StringUtils.isNotBlank(user)) {
+                finalInput = "我是" + user + "。" + input;
+            }
+        } catch (Exception e) {
+            log.error("Failed to get user from session", e);
+        }
+
+        log.info("Unified call input: {}", finalInput);
+        
+        // 直接调用 subAgent 的非流式方法，或者从流式中聚合文本
+        // 这里采用聚合流式结果的方式，以兼容所有子 Agent
+        return subAgent.streamCall(session, finalInput)
+                .map(event -> event.getMessage())
+                .filter(msg -> msg != null)
+                .reduce((m1, m2) -> {
+                    // 这里可以根据需要拼接或聚合，但通常最后一个消息包含完整文本或流式拼接
+                    // 简单的流式拼接逻辑：
+                    return m2; 
+                })
+                .block();
+    }
+
     public void streamCall(Session session, String input) {
         synchronized (this) {
             while (!done) {
