@@ -123,7 +123,7 @@ public class HomeworkService {
      * 保存当天的作业内容（本地缓存 + OSS备份）
      */
     @Tool(name = "save_homework", description = "保存当天的作业内容")
-    public String saveHomework(String content) {
+    public String saveHomework(@ToolParam(name = "markdown格式的作业内容") String content) {
         LocalDate now = LocalDate.now();
         String year = now.format(yearFormatter);
         String month = now.format(monthFormatter);
