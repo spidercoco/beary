@@ -72,6 +72,7 @@ public class HomeworkService {
     /**
      * 获取当天的作业内容
      */
+    @Tool(name = "get_homework", description = "获取当天的作业内容")
     public String getTodayHomework() {
         LocalDate now = LocalDate.now();
         return getHomeworkByDate(now);
