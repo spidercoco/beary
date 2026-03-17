@@ -12,8 +12,6 @@ import com.aliyun.oss.internal.signer.OSSSignerParams;
 import com.deepinmind.bear.core.Player;
 import com.deepinmind.bear.oss.OSSService;
 import com.deepinmind.bear.session.Session;
-import com.deepinmind.bear.skills.ControlDevice;
-import com.deepinmind.bear.skills.SingSongSkill;
 import com.deepinmind.bear.tools.DingTalk;
 import com.deepinmind.bear.tools.KnxDeviceControl;
 import com.deepinmind.bear.tools.Printer;

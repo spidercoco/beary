@@ -12,7 +12,6 @@ import com.deepinmind.bear.session.Session;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import com.deepinmind.bear.skills.ControlDevice;
 import com.deepinmind.bear.tools.KnxDeviceControl;
 import com.deepinmind.bear.utils.PromptLoader;
 import com.deepinmind.bear.utils.SkillLoader;

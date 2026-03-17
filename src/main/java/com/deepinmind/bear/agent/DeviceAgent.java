@@ -9,8 +9,6 @@ import org.springframework.stereotype.Service;
 
 import com.deepinmind.bear.core.Player;
 import com.deepinmind.bear.session.Session;
-import com.deepinmind.bear.skills.ControlDevice;
-import com.deepinmind.bear.skills.SingSongSkill;
 import com.deepinmind.bear.tools.KnxDeviceControl;
 import com.deepinmind.bear.tts.Qwen3TTS;
 import com.deepinmind.bear.utils.PromptLoader;

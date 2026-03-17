@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.deepinmind.bear.service.HomeworkService;
+import com.deepinmind.bear.tools.KnxDeviceControl;
 import com.deepinmind.bear.session.Session;
 import com.deepinmind.bear.utils.PromptLoader;
 import com.deepinmind.bear.utils.SkillLoader;
@@ -37,22 +38,11 @@ public class BotAgent extends SubAgent {
         @Autowired
         public BotAgent(PromptLoader promptLoader,
                         HomeworkService homeworkService,
+                        KnxDeviceControl knxDeviceControl,
                         SkillLoader skillLoader,
                         @Value("${dashscope.key}") String dashscopeKey) throws IOException {
 
-                Toolkit toolkit = new Toolkit();
-                toolkit.registerTool(homeworkService);
-
-                // 加载课程表技能
-                AgentSkill timetableSkill = skillLoader.createSkill("timetable");
-                SkillBox skillBox = new SkillBox(toolkit);
-                skillBox.registerSkill(timetableSkill);
-                // skillBox.registration()
-                //                 .skill(timetableSkill)
-                //                 .tool(homeworkService)
-                //                 .apply();
-
-                // 1. Vision Agent
+                // 1. Vision Agent (不配置工具和技能)
                 visionAgent = ReActAgent.builder()
                                 .name("BotVision")
                                 .sysPrompt(promptLoader.getPromptByType("bot-agent"))
@@ -61,14 +51,20 @@ public class BotAgent extends SubAgent {
                                                 .modelName("qwen3-vl-plus")
                                                 .enableThinking(true)
                                                 .build())
-                                .toolkit(toolkit)
-                                .skillBox(skillBox)
                                 .build();
 
+                // 2. Text Agent (配置工具和技能)
+                Toolkit textToolkit = new Toolkit();
+                textToolkit.registerTool(homeworkService);
+                textToolkit.registerTool(knxDeviceControl);
 
-                Toolkit texToolkit = new Toolkit();
-                texToolkit.registerTool(homeworkService);
-                // 2. Text Agent
+                AgentSkill timetableSkill = skillLoader.createSkill("timetable");
+                AgentSkill deviceControlSkill = skillLoader.createSkill("device_control");
+
+                SkillBox textSkillBox = new SkillBox(textToolkit);
+                textSkillBox.registerSkill(timetableSkill);
+                textSkillBox.registerSkill(deviceControlSkill);
+
                 textAgent = ReActAgent.builder()
                                 .name("BotText")
                                 .sysPrompt(String.format(promptLoader.getPromptByType("bot-agent"),
@@ -77,7 +73,8 @@ public class BotAgent extends SubAgent {
                                                 .apiKey(dashscopeKey)
                                                 .modelName("qwen3-max")
                                                 .build())
-                                .toolkit(texToolkit)
+                                .toolkit(textToolkit)
+                                .skillBox(textSkillBox)
                                 .build();
         }
 
