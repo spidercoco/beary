@@ -50,7 +50,7 @@ public class SchoolAgent extends SubAgent {
         String realHomework = homeworkService.getTodayHomework();
         
         // 2. 将背景知识和用户问题组合，确保模型能够回答真实的作业内容
-        String combinedInput = String.format("【一周的课程安排】\\n%s\\n\\n【当天的作业信息】\n%s\n\n【用户指令】\n%s", realHomework, input);
+        String combinedInput = String.format("【一周的课程安排】\\n%s\\n\\n【当天的作业信息】\n%s\n\n【用户指令】\n%s", homeworkService.getTimetable(), realHomework, input);
         
         Msg msg = Msg.builder()
             .textContent(combinedInput)

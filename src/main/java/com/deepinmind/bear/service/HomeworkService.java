@@ -149,6 +149,7 @@ public class HomeworkService {
     /**
      * 获取课程表内容（优先从本地缓存取）
      */
+    @Tool(name = "get_timetable", description = "获取当前课程表内容")
     public String getTimetable() {
         String localPath = getInfoRoot() + "beary_info/school/timetable.txt";
         File localFile = new File(localPath);
