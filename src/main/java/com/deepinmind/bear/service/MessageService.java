@@ -24,7 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service("message")
-public class MessageService implements WSService {
+public class MessageService {
 
     @Autowired
     AudioService qwen3tts;
@@ -70,7 +70,9 @@ public class MessageService implements WSService {
         }
     }
 
-    @Override
+    /**
+     * 处理消息逻辑
+     */
     public Map<String, String> handleMessage(Map<String, String> message) {
         // 打印收到的JSON消息
         log.info("Received message: {}", message);

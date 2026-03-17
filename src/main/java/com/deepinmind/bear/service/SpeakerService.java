@@ -179,9 +179,12 @@ public class SpeakerService {
                     finalEmbedding[i] = (oldEmbedding[i] + newEmbedding[i]) / 2.0f;
                 }
                 normalizeInPlace(finalEmbedding);
+                // 必须先移除旧的，否则 add 可能会因为 Key 已存在而失败
+                manager.remove(role);
             } catch (Exception e) {
                 log.warn("Blending failed, using new embedding: {}", e.getMessage());
                 finalEmbedding = newEmbedding;
+                manager.remove(role);
             }
         } else {
             finalEmbedding = newEmbedding;
