@@ -1,36 +1,26 @@
 #!/bin/bash
 
-# Configuration
-APP_NAME="aibeary"
-JAR_NAME="demo-0.0.1-SNAPSHOT.jar"
-LOG_FILE="logs/nls.log"
-PID_FILE="app.pid"
-FRPC_PID_FILE="frpc.pid"
+# Configuration (Ensure these match your server paths)
+APP_DIR="/home/spidercoco/beary"
+JAR_NAME="target/demo-0.0.1-SNAPSHOT.jar"
 
 FRP_DIR="beary_info/frp"
 FRPC_BIN="$FRP_DIR/frpc"
 FRPC_CONFIG="$FRP_DIR/frpc.toml"
 
-# Move to the project directory
-cd "$(dirname "$0")"
+cd $APP_DIR
 mkdir -p logs
 
-# 1. --- Extract Namespace from config ---
+# 1. --- Extract Namespace ---
 NAMESPACE=$(grep "^namespace=" beary_info/conf/application.properties | cut -d'=' -f2 | tr -d '\r\n ')
-if [ -z "$NAMESPACE" ]; then
-    NAMESPACE="bearylove" # Fallback
-fi
+if [ -z "$NAMESPACE" ]; then NAMESPACE="bearylove"; fi
 
-# 2. --- Stop Existing Processes ---
-echo "--- Stopping $APP_NAME & FRPC ---"
-[ -f "$PID_FILE" ] && kill $(cat "$PID_FILE") 2>/dev/null
-[ -f "$FRPC_PID_FILE" ] && kill $(cat "$FRPC_PID_FILE") 2>/dev/null
-# Extra cleanup
+# 2. --- Stop Old Processes (Cleanup) ---
+# 注意：在 systemd 模式下，旧进程通常由 systemd 清理，但这里保留兜底
 pgrep -f "$JAR_NAME" | xargs kill -9 2>/dev/null
 pgrep -f "frpc -c $FRPC_CONFIG" | xargs kill -9 2>/dev/null
 
 # 3. --- Update FRPC Config ---
-echo "--- Updating FRPC Config (Namespace: $NAMESPACE) ---"
 cat > "$FRPC_CONFIG" <<EOF
 serverAddr = "it.deepinmind.com"
 serverPort = 7000
@@ -45,27 +35,13 @@ customDomains = ["it.deepinmind.com"]
 locations = ["/aibeary/${NAMESPACE}"]
 EOF
 
-# 4. --- Start FRPC ---
-if [ -f "$FRPC_BIN" ]; then
-    echo "--- Starting FRPC ---"
-    nohup "$FRPC_BIN" -c "$FRPC_CONFIG" > logs/frpc.log 2>&1 &
-    echo $! > "$FRPC_PID_FILE"
-    sleep 1
-else
-    echo "Error: FRPC binary missing ($FRPC_BIN)"
-    exit 1
-fi
+# 4. --- Start FRPC (Background) ---
+echo "Starting FRPC..."
+chmod +x "$FRPC_BIN"
+# FRPC 在后台运行
+"$FRPC_BIN" -c "$FRPC_CONFIG" > logs/frpc.log 2>&1 &
 
-# 5. --- Start Java ---
-if [ ! -f "target/$JAR_NAME" ]; then
-    echo "Error: JAR file not found (target/$JAR_NAME). Please run mvn clean package first."
-    exit 1
-fi
-
-echo "--- Starting $APP_NAME ---"
-nohup java -jar target/$JAR_NAME > "$LOG_FILE" 2>&1 &
-echo $! > "$PID_FILE"
-
-echo "Done. $APP_NAME started with PID $(cat $PID_FILE)."
-echo "--- Tailing logs ---"
-tail -f "$LOG_FILE"
+# 5. --- Start Java (Foreground for systemd) ---
+echo "Starting Aibeary Java App..."
+# 使用 exec 使 Java 进程接管当前 Shell 进程，方便 systemd 管理
+exec java -jar "$JAR_NAME"
